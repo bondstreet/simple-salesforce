@@ -159,7 +159,7 @@ class Salesforce(object):
 
         * name -- the name of a Salesforce object type, e.g. Lead or Contact
         """
-        
+
         # fix to enable serialization (https://github.com/heroku/simple-salesforce/issues/60)
         if name.startswith('__'):
             return super(Salesforce, self).__getattr__(name)
@@ -227,7 +227,7 @@ class Salesforce(object):
             return json_result
 
     # Search Functions
-    def search(self, search):
+    def search(self, search, timeout=None):
         """Returns the result of a Salesforce search as a dict decoded from
         the Salesforce response JSON payload.
 
@@ -235,12 +235,15 @@ class Salesforce(object):
 
         * search -- the fully formatted SOSL search string, e.g.
                     `FIND {Waldo}`
+        * timeout -- how long to wait for the server to send data before giving
+                     up, as a float, or a (connect timeout, read timeout) tuple
         """
         url = self.base_url + 'search/'
 
         # `requests` will correctly encode the query string passed as `params`
         params = {'q': search}
-        result = self.request.get(url, headers=self.headers, params=params)
+        result = self.request.get(url, headers=self.headers, params=params,
+                                  timeout=timeout)
         if result.status_code != 200:
             raise SalesforceGeneralError(url,
                                          'search',
@@ -462,7 +465,7 @@ class SFType(object):
         result = self._call_salesforce('GET', custom_url)
         return result.json(object_pairs_hook=OrderedDict)
 
-    def create(self, data):
+    def create(self, data, timeout=None):
         """Creates a new SObject using a POST to `.../{object_name}/`.
 
         Returns a dict decoded from the JSON payload returned by Salesforce.
@@ -471,9 +474,12 @@ class SFType(object):
 
         * data -- a dict of the data to create the SObject from. It will be
                   JSON-encoded before being transmitted.
+        * timeout -- how long to wait for the server to send data before giving
+                     up, as a float, or a (connect timeout, read timeout) tuple
         """
         result = self._call_salesforce('POST', self.base_url,
-                                       data=json.dumps(data))
+                                       data=json.dumps(data),
+                                       timeout=timeout)
         return result.json(object_pairs_hook=OrderedDict)
 
     def upsert(self, record_id, data, raw_response=False):
@@ -497,7 +503,7 @@ class SFType(object):
                                        data=json.dumps(data))
         return self._raw_response(result, raw_response)
 
-    def update(self, record_id, data, raw_response=False):
+    def update(self, record_id, data, raw_response=False, timeout=None):
         """Updates an SObject using a PATCH to
         `.../{object_name}/{record_id}`.
 
@@ -512,9 +518,12 @@ class SFType(object):
                   JSON-encoded before being transmitted.
         * raw_response -- a boolean indicating whether to return the response
                           directly, instead of the status code.
+        * timeout -- how long to wait for the server to send data before giving
+                     up, as a float, or a (connect timeout, read timeout) tuple
         """
         result = self._call_salesforce('PATCH', self.base_url + record_id,
-                                       data=json.dumps(data))
+                                       data=json.dumps(data),
+                                       timeout=timeout)
         return self._raw_response(result, raw_response)
 
     def delete(self, record_id, raw_response=False):
